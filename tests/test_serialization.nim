@@ -8,8 +8,10 @@
 {.used.}
 
 import
-  stew/results, presto/client,
-  testutils/unittests, chronicles,
+  stew/results,
+  presto/client,
+  testutils/unittests,
+  chronicles,
   ../beacon_chain/spec/eth2_apis/[eth2_rest_serialization, rest_types],
   ./testutil
 
@@ -18,60 +20,57 @@ suite "Serialization/deserialization test suite":
     const GoodTestVectors = [
       (
         """{"code": 500, "message": "block not found"}""",
-        RestErrorMessage.init(500, "block not found")
+        RestErrorMessage.init(500, "block not found"),
       ),
       (
         """{"code": "600", "message": "block not found"}""",
-        RestErrorMessage.init(600, "block not found")
+        RestErrorMessage.init(600, "block not found"),
       ),
       (
         """{"code": "700", "message": "block not found",
             "data": "data", "custom": "field"}""",
-        RestErrorMessage.init(700, "block not found")
+        RestErrorMessage.init(700, "block not found"),
       ),
       (
         """{"code":"701", "message": "block not found",
             "data": "data", "custom": 300}""",
-        RestErrorMessage.init(701, "block not found")
+        RestErrorMessage.init(701, "block not found"),
       ),
       (
         """{"code": "702", "message": "block not found",
             "data": "data", "custom": {"field1": "value1"}}""",
-        RestErrorMessage.init(702, "block not found")
+        RestErrorMessage.init(702, "block not found"),
       ),
       (
         """{"code": 800, "message": "block not found",
             "custom": "data", "stacktraces": []}""",
-        RestErrorMessage.init(800, "block not found", [])
+        RestErrorMessage.init(800, "block not found", []),
       ),
       (
         """{"code": 801, "message": "block not found",
             "custom": 100, "stacktraces": []}""",
-        RestErrorMessage.init(801, "block not found", [])
+        RestErrorMessage.init(801, "block not found", []),
       ),
       (
         """{"code": 802, "message": "block not found",
             "custom": {"field1": "value1"}, "stacktraces": []}""",
-        RestErrorMessage.init(802, "block not found", [])
+        RestErrorMessage.init(802, "block not found", []),
       ),
       (
         """{"code": "900", "message": "block not found",
             "stacktraces": ["line1", "line2", "line3"], "custom": "data"}""",
-        RestErrorMessage.init(900, "block not found",
-                              ["line1", "line2", "line3"])
+        RestErrorMessage.init(900, "block not found", ["line1", "line2", "line3"]),
       ),
       (
         """{"code": "901", "message": "block not found",
             "stacktraces": ["line1", "line2", "line3"], "custom": 2000}""",
-        RestErrorMessage.init(901, "block not found",
-                              ["line1", "line2", "line3"])
+        RestErrorMessage.init(901, "block not found", ["line1", "line2", "line3"]),
       ),
       (
         """{"code": "902", "message": "block not found",
             "stacktraces": ["line1", "line2", "line3"],
             "custom": {"field1": "value1"}}""",
-        RestErrorMessage.init(902, "block not found",
-                              ["line1", "line2", "line3"])
+        RestErrorMessage.init(902, "block not found", ["line1", "line2", "line3"]),
       )
     ]
 
@@ -104,8 +103,10 @@ suite "Serialization/deserialization test suite":
 
     for test in GoodTestVectors:
       let res = decodeBytes(
-        RestErrorMessage, test[0].toOpenArrayByte(0, len(test[0]) - 1),
-        Opt.some(contentType))
+        RestErrorMessage,
+        test[0].toOpenArrayByte(0, len(test[0]) - 1),
+        Opt.some(contentType),
+      )
       check res.isOk()
       let response = res.get()
       check:
@@ -120,8 +121,8 @@ suite "Serialization/deserialization test suite":
 
     for test in FailureTestVectors:
       let res = decodeBytes(
-        RestErrorMessage, test.toOpenArrayByte(0, len(test) - 1),
-        Opt.some(contentType))
+        RestErrorMessage, test.toOpenArrayByte(0, len(test) - 1), Opt.some(contentType)
+      )
       checkpoint test
       check res.isErr()
 
@@ -134,11 +135,10 @@ suite "Serialization/deserialization test suite":
         a.errobj.message == b
       else:
         raiseAssert "Unsupported RestApiResponse kind"
+
     check:
-      jsonMsgResponse(RestApiResponse, "data") ==
-          """{"code":200,"message":"data"}"""
-      jsonError(RestApiResponse, Http202, "data") ==
-        """{"code":202,"message":"data"}"""
+      jsonMsgResponse(RestApiResponse, "data") == """{"code":200,"message":"data"}"""
+      jsonError(RestApiResponse, Http202, "data") == """{"code":202,"message":"data"}"""
       jsonError(RestApiResponse, Http400, "data", "") ==
         """{"code":400,"message":"data"}"""
       jsonError(RestApiResponse, Http404, "data", "stacktrace") ==
@@ -151,27 +151,41 @@ suite "Serialization/deserialization test suite":
   test "strictParse(Stuint) tests":
     const
       GoodVectors16 = [
-        ("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
-         "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
-        ("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
-           "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
-        ("0x123456789ABCDEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
-           "123456789abcdefffffffffffffffffffffffffffffffffffffffffffffffff"),
-        ("123456789ABCDEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
-         "123456789abcdefffffffffffffffffffffffffffffffffffffffffffffffff")
+        (
+          "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+          "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        ),
+        (
+          "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+          "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        ),
+        (
+          "0x123456789ABCDEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+          "123456789abcdefffffffffffffffffffffffffffffffffffffffffffffffff"
+        ),
+        (
+          "123456789ABCDEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+          "123456789abcdefffffffffffffffffffffffffffffffffffffffffffffffff"
+        )
       ]
       GoodVectors10 = [
-        ("115792089237316195423570985008687907853269984665640564039457584007913129639935",
-         "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
-        ("0", "0"),
+        (
+          "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+          "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        ),
+        ("0", "0")
       ]
       GoodVectors8 = [
-        ("0o17777777777777777777777777777777777777777777777777777777777777777777777777777777777777",
-         "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+        (
+          "0o17777777777777777777777777777777777777777777777777777777777777777777777777777777777777",
+          "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        )
       ]
       GoodVectors2 = [
-        ("0b1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-         "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+        (
+          "0b1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+          "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        )
       ]
       OverflowVectors16 = [
         "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0",

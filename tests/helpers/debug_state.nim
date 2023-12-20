@@ -5,11 +5,8 @@
 #   * Apache v2 license (license terms in the root directory or at https://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-  macros,
-  ssz_serialization/types,
-  ../../beacon_chain/spec/datatypes/base
-  # digest is necessary for them to be printed as hex
+import macros, ssz_serialization/types, ../../beacon_chain/spec/datatypes/base
+    # digest is necessary for them to be printed as hex
 
 export base.`==`
 
@@ -19,11 +16,22 @@ export base.`==`
 # highlighting the differences
 
 const builtinTypes = [
-  "int", "int8", "int16", "int32", "int64",
-  "uint", "uint8", "uint16", "uint32", "uint64",
-  "byte", "float32", "float64",
+  "int",
+  "int8",
+  "int16",
+  "int32",
+  "int64",
+  "uint",
+  "uint8",
+  "uint16",
+  "uint32",
+  "uint64",
+  "byte",
+  "float32",
+  "float64",
   # "array", "seq", # wrapped in nnkBracketExpr
-  "char", "string"
+  "char",
+  "string"
 ]
 
 proc compareStmt(xSubField, ySubField: NimNode, stmts: var NimNode) =
@@ -34,8 +42,8 @@ proc compareStmt(xSubField, ySubField: NimNode, stmts: var NimNode) =
   stmts.add quote do:
     doAssert(
       `isEqual`(`xSubField`, `ySubField`),
-      "\nDiff: " & `xStr` & " = " & $`xSubField` & "\n" &
-      "and   " & `yStr` & " = " & $`ySubField` & "\n"
+      "\nDiff: " & `xStr` & " = " & $`xSubField` & "\n" & "and   " & `yStr` & " = " &
+        $`ySubField` & "\n",
     )
 
 proc compareContainerStmt(xSubField, ySubField: NimNode, stmts: var NimNode) =
@@ -46,14 +54,14 @@ proc compareContainerStmt(xSubField, ySubField: NimNode, stmts: var NimNode) =
   stmts.add quote do:
     doAssert(
       `isEqual`(`xSubField`.len, `ySubField`.len),
-        "\nDiff: " & `xStr` & ".len = " & $`xSubField`.len & "\n" &
-        "and   " & `yStr` & ".len = " & $`ySubField`.len & "\n"
+      "\nDiff: " & `xStr` & ".len = " & $`xSubField`.len & "\n" & "and   " & `yStr` &
+        ".len = " & $`ySubField`.len & "\n",
     )
     for idx in `xSubField`.low .. `xSubField`.high:
       doAssert(
         `isEqual`(`xSubField`[idx], `ySubField`[idx]),
-        "\nDiff: " & `xStr` & "[" & $idx & "] = " & $`xSubField`[idx] & "\n" &
-        "and   " & `yStr` & "[" & $idx & "] = " & $`ySubField`[idx] & "\n"
+        "\nDiff: " & `xStr` & "[" & $idx & "] = " & $`xSubField`[idx] & "\n" & "and   " &
+          `yStr` & "[" & $idx & "] = " & $`ySubField`[idx] & "\n",
       )
 
 func inspectType(tImpl, xSubField, ySubField: NimNode, stmts: var NimNode) =
@@ -69,7 +77,7 @@ func inspectType(tImpl, xSubField, ySubField: NimNode, stmts: var NimNode) =
         decl[1], # field type
         nnkDotExpr.newTree(xSubField, decl[0]), # Accessor
         nnkDotExpr.newTree(ySubField, decl[0]),
-        stmts
+        stmts,
       )
   of {nnkRefTy, nnkDistinctTy}:
     inspectType(tImpl[0], xSubField, ySubField, stmts)
@@ -79,7 +87,7 @@ func inspectType(tImpl, xSubField, ySubField: NimNode, stmts: var NimNode) =
         # TODO  resolve trouble with overloaded `[]` template
         discard
       else:
-      # doAssert tImpl[0].eqIdent"List" or tImpl[0].eqIdent"seq" or tImpl[0].eqIdent"array", "Error: unsupported generic type: " & $tImpl[0]
+        # doAssert tImpl[0].eqIdent"List" or tImpl[0].eqIdent"seq" or tImpl[0].eqIdent"array", "Error: unsupported generic type: " & $tImpl[0]
         compareContainerStmt(xSubField, ySubField, stmts)
     elif $tImpl in builtinTypes:
       compareStmt(xSubField, ySubField, stmts)
@@ -93,8 +101,7 @@ func inspectType(tImpl, xSubField, ySubField: NimNode, stmts: var NimNode) =
     else:
       inspectType(tImpl.getTypeImpl(), xSubField, ySubField, stmts)
   else:
-    error "Unsupported kind: " & $tImpl.kind &
-      " for field \"" & $xSubField.toStrLit &
+    error "Unsupported kind: " & $tImpl.kind & " for field \"" & $xSubField.toStrLit &
       "\" of type \"" & tImpl.repr
 
 macro reportDiff*(x, y: typed): untyped =
