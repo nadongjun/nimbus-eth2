@@ -105,7 +105,8 @@ proc getValidator*(validators: auto,
     Opt.some ValidatorAndIndex(index: ValidatorIndex(idx),
                                validator: validators[idx])
 
-proc addValidatorsFromWeb3Signer(node: BeaconNode, web3signerUrl: Web3SignerUrl, epoch: Epoch) {.async.} =
+proc addValidatorsFromWeb3Signer(node: BeaconNode, web3signerUrl: Web3SignerUrl,
+                                 epoch: Epoch) {.async.} =
   let dynamicStores =
     try:
       let res = await queryValidatorsSource(web3signerUrl)
@@ -119,22 +120,22 @@ proc addValidatorsFromWeb3Signer(node: BeaconNode, web3signerUrl: Web3SignerUrl,
            error = $exc.name, reason = $exc.msg
       default(seq[KeystoreData])
 
-  for keystore in dynamicStores:
+  proc addValidatorProc(keystore: KeystoreData) =
     let
-      data =
-        withState(node.dag.headState):
-          getValidator(forkyState.data.validators.asSeq(), keystore.pubkey)
-      index =
-        if data.isSome():
-          Opt.some(data.get().index)
-        else:
-          Opt.none(ValidatorIndex)
+      epoch = node.currentSlot().epoch
+      index = Opt.none(ValidatorIndex)
       feeRecipient =
         node.consensusManager[].getFeeRecipient(keystore.pubkey, index, epoch)
-      gasLimit = node.consensusManager[].getGasLimit(keystore.pubkey)
-      v = node.attachedValidators[].addValidator(keystore, feeRecipient,
-                                                 gasLimit)
-    v.updateValidator(data)
+      gasLimit =
+        node.consensusManager[].getGasLimit(keystore.pubkey)
+    discard node.attachedValidators[].addValidator(keystore, feeRecipient,
+                                                   gasLimit)
+
+  debug "Validators source has been polled for validators",
+        keystores_found = len(dynamicStores),
+        web3signer_url = web3signerUrl.url
+  node.attachedValidators.updateDynamicValidators(
+    web3signerUrl, dynamicStores, node.keysFilter, addValidatorProc)
 
 proc addValidators*(node: BeaconNode) {.async.} =
   info "Loading validators", validatorsDir = node.config.validatorsDir(),
@@ -198,9 +199,8 @@ proc pollForDynamicValidators*(node: BeaconNode,
               debug "Validators source has been polled for validators",
                     keystores_found = len(keystores),
                     web3signer_url = web3signerUrl.url
-              node.attachedValidators.updateDynamicValidators(web3signerUrl,
-                                                              keystores,
-                                                              addValidatorProc)
+              node.attachedValidators.updateDynamicValidators(
+                web3signerUrl, keystores, node.keysFilter, addValidatorProc)
               seconds(intervalInSeconds)
             else:
               # In case of error we going to repeat our call with much smaller
