@@ -47,7 +47,7 @@ proc unblindAndRouteBlockMEV*(
     blindedBlock:
       capella_mev.SignedBlindedBeaconBlock |
       deneb_mev.SignedBlindedBeaconBlock):
-    Future[Result[Opt[BlockRef], string]] {.async.} =
+    Future[Result[Opt[BlockRef], string]] {.async: (raises: [CancelledError]).} =
   const consensusFork = typeof(blindedBlock).kind
 
   info "Proposing blinded Builder API block",
@@ -65,7 +65,7 @@ proc unblindAndRouteBlockMEV*(
       # returning Opt.some, regardless of whether on head or newBlock.
     except RestDecodingError as exc:
       return err("REST decoding error submitting blinded block: " & exc.msg)
-    except CatchableError as exc:
+    except RestError as exc:
       return err("exception in submitBlindedBlock: " & exc.msg)
 
   const httpOk = 200
